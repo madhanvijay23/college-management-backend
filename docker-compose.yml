@@ -1,0 +1,51 @@
+
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: college-postgres
+    environment:
+      POSTGRES_DB: college_db
+      POSTGRES_USER: college_user
+      POSTGRES_PASSWORD: college_pass_2024
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - college-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U college_user -d college_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Application
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: college-backend
+    environment:
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/college_db?user=college_user&password=college_pass_2024
+      - JWT_SECRET=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      - SPRING_PROFILES_ACTIVE=prod
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - college-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  college-network:
+    driver: bridge
